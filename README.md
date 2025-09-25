@@ -2,12 +2,16 @@
 Parsing all photos on a person's page vk
 # Install source code
 To make the code work, install requests.
-<details> <summary>Code:</summary> <pre> <code>pip install requests</code> </pre> </details>
+```
+pip install requests
+```
 
-# Py to exe?
-<details> <summary>Code:</summary> <pre><code>pip install requests
+## Py to exe?
+```
+pip install requests
 pip install auto-py-to-exe
-auto-py-to-exe </code> </pre> </details>
+auto-py-to-exe
+```
 
 # donate me pls  
 BTC:bc1q4uypj3yn6harpyr28xr9v73qs73d45jxesuduh  
