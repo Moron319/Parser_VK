@@ -1,130 +1,186 @@
-# --- Import python library ---
+#--import libraries/загружаем библиотеки--
 
 import requests
 import os
 import time
+import re
 
-# User input for VK API access
-user_id = input("Enter VK user ID(example:4225252): ")
-access_token = input("Enter VK access token: ")
+#--set version/назначяем версию--
 version = '5.131'
 
-# Base folder for saving photos
-base_folder = os.path.join("parser_VK", user_id)
+#--Language selection/Выбор языка--
+lang = input("Choose language/Выберите язык (en/ru):").strip().lower()
+if lang not in ['en', 'ru']:
+    lang = 'en'
 
-# Function to get user's albums
-def get_albums(user_id):
-    url = 'https://api.vk.com/method/photos.getAlbums'
-    params = {
-        'owner_id': user_id,
-        'access_token': access_token,
-        'v': version
+#--Messages dictionary/Словарь сообщений--
+messages = {
+    'en': {
+        'enter_user_id': "Enter VK user ID (example: 4225252): ",
+        'enter_token': "Enter VK access token: ",
+        'starting_download': "\n[+] Starting download for user: {}",
+        'fetching_standard_albums': "\n[+] Fetching standard albums...",
+        'album': " → Album: {}",
+        'fetching_system_albums': "\n[+] Fetching system albums...",
+        'fetching_wall_photos': "\n[+] Fetching wall post photos...",
+        'all_done': "\nAll photos downloaded successfully!",
+        'vk_api_error': "[VK API Error] {}",
+        'request_error': "[Request Error] {}",
+        'download_error': "[Download Error] {}: {}"
+    },
+    'ru': {
+        'enter_user_id': "Введите ID пользователя VK (пример: 4225252): ",
+        'enter_token': "Введите access token VK: ",
+        'starting_download': "\n[+] Начинаем загрузку для пользователя: {}",
+        'fetching_standard_albums': "\n[+] Получаем стандартные альбомы...",
+        'album': " → Альбом: {}",
+        'fetching_system_albums': "\n[+] Получаем системные альбомы...",
+        'fetching_wall_photos': "\n[+] Получаем фото со стены...",
+        'all_done': "\nВсе фото успешно загружены!",
+        'vk_api_error': "[Ошибка VK API] {}",
+        'request_error': "[Ошибка запроса] {}",
+        'download_error': "[Ошибка скачивания] {}: {}"
     }
-    response = requests.get(url, params=params).json()
-    return response['response']['items']
+}
 
-# Function to get photos from an album (standard or system)
-def get_photos(owner_id, album_id):
-    url = 'https://api.vk.com/method/photos.get'
-    params = {
-        'owner_id': owner_id,
-        'album_id': album_id,
-        'access_token': access_token,
-        'v': version,
-        'photo_sizes': 1,
-        'count': 1000
-    }
-    response = requests.get(url, params=params).json()
-    if 'error' in response:
-        print(f"Error getting photos from album '{album_id}': {response['error']['error_msg']}")
-        return []
-    return response['response']['items']
+#--Input/Ввод данных--
+user_id = input(messages[lang]['enter_user_id']).strip()
+access_token = input(messages[lang]['enter_token']).strip()
 
-# Get photos from posts on user's wall
-def get_wall_photos(owner_id):
-    url = 'https://api.vk.com/method/wall.get'
-    photos = []
-    offset = 0
-    count = 100
+#--Helpers/Вспомогательные функции--
+def clean_filename(name):
+    # Clean file/folder names from invalid characters
+    # Очищаем имя файла/папки от недопустимых символов
+    return re.sub(r'[\\/:"*?<>|]+', '_', name)
 
-    while True:
-        params = {
-            'owner_id': owner_id,
-            'access_token': access_token,
-            'v': version,
-            'count': count,
-            'offset': offset,
-            'filter': 'owner'
-        }
+def vk_api_request(method, params):
+    # Perform VK API request with error handling
+    # Выполняем запрос к VK API с обработкой ошибок
+    url = f"https://api.vk.com/method/{method}"
+    params.update({'access_token': access_token, 'v': version})
+    try:
         response = requests.get(url, params=params).json()
-
         if 'error' in response:
-            print(f"Error getting photos from wall: {response['error']['error_msg']}")
-            break
+            print(messages[lang]['vk_api_error'].format(response['error']['error_msg']))
+            return None
+        return response['response']
+    except Exception as e:
+        print(messages[lang]['request_error'].format(e))
+        return None
 
-        items = response['response']['items']
-        if not items:
-            break
+def get_user_name(user_id):
+    # Get user's full name from VK
+    # Получаем имя и фамилию пользователя из VK
+    response = vk_api_request('users.get', {'user_ids': user_id})
+    if response and len(response) > 0:
+        user = response[0]
+        full_name = f"{user.get('first_name', '')}_{user.get('last_name', '')}"
+        return clean_filename(full_name)
+    return str(user_id)
 
-        for post in items:
-            if 'attachments' in post:
-                for att in post['attachments']:
-                    if att['type'] == 'photo':
-                        photos.append(att['photo'])
-
-        if len(items) < count:
-            break
-        offset += count
-
-    return photos
-
-# Function to download photo from URL
 def download_photo(url, folder, filename):
+    # Download photo and save to folder
+    # Скачиваем фото и сохраняем в папку
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, filename)
+    path = os.path.join(folder, clean_filename(filename))
     try:
         img = requests.get(url).content
         with open(path, 'wb') as f:
             f.write(img)
     except Exception as e:
-        print(f"Error downloading photo {filename}: {e}")
+        print(messages[lang]['download_error'].format(filename, e))
 
-# --- Main logic ---
+#--Logic/Основная логика--
+def get_albums(user_id):
+    # Get user albums
+    # Получаем альбомы пользователя
+    response = vk_api_request('photos.getAlbums', {'owner_id': user_id})
+    return response['items'] if response else []
 
-# 1. Download all standard albums
+def get_photos(owner_id, album_id):
+    # Get photos from album
+    # Получаем фото из альбома
+    response = vk_api_request('photos.get', {
+        'owner_id': owner_id,
+        'album_id': album_id,
+        'photo_sizes': 1,
+        'count': 1000
+    })
+    return response['items'] if response else []
+
+def get_wall_photos(owner_id):
+    # Get photos from wall posts
+    # Получаем фото из постов на стене
+    photos = []
+    offset = 0
+    count = 100
+
+    while True:
+        response = vk_api_request('wall.get', {
+            'owner_id': owner_id,
+            'offset': offset,
+            'count': count,
+            'filter': 'owner'
+        })
+        if not response:
+            break
+        items = response.get('items', [])
+        if not items:
+            break
+        for post in items:
+            for att in post.get('attachments', []):
+                if att['type'] == 'photo':
+                    photos.append(att['photo'])
+        if len(items) < count:
+            break
+        offset += count
+        time.sleep(0.34)
+    return photos
+
+def process_photos(photos, folder):
+    # Download all photos from list
+    # Скачиваем все фото из списка
+    for i, photo in enumerate(photos):
+        sizes = photo.get('sizes', [])
+        if not sizes:
+            continue
+        url = sorted(sizes, key=lambda s: s['width'] * s['height'])[-1]['url']
+        filename = f"{i+1}.jpg"
+        download_photo(url, folder, filename)
+
+#--Main execution/Основной запуск--
+
+user_name_folder = get_user_name(user_id)
+base_folder = os.path.join("parser_VK", user_name_folder)
+
+print(messages[lang]['starting_download'].format(user_name_folder))
+print(messages[lang]['fetching_standard_albums'])
 albums = get_albums(user_id)
 for album in albums:
     album_id = album['id']
-    title = album['title'].replace('/', '_').strip()
-    print(f"Downloading album: {title}")
+    title = clean_filename(album['title'])
+    print(messages[lang]['album'].format(title))
     folder_path = os.path.join(base_folder, title)
     photos = get_photos(user_id, album_id)
-    for i, photo in enumerate(photos):
-        url = sorted(photo['sizes'], key=lambda x: x['width'] * x['height'])[-1]['url']
-        download_photo(url, folder_path, f"{i + 1}.jpg")
+    process_photos(photos, folder_path)
+    time.sleep(0.34)
 
-# 2. Download system albums: 'profile', 'wall', and 'saved' (if token belongs to user)
+print(messages[lang]['fetching_system_albums'])
 system_albums = {
     'profile': 'Profile Photos',
     'wall': 'Wall Photos',
     'saved': 'Saved Photos'
 }
+for album_id, title in system_albums.items():
+    print(messages[lang]['album'].format(title))
+    folder_path = os.path.join(base_folder, clean_filename(title))
+    photos = get_photos(user_id, album_id)
+    process_photos(photos, folder_path)
+    time.sleep(0.34)
 
-for sys_album_id, name in system_albums.items():
-    print(f"Downloading system album: {name}")
-    folder_path = os.path.join(base_folder, name)
-    photos = get_photos(user_id, sys_album_id)
-    for i, photo in enumerate(photos):
-        url = sorted(photo['sizes'], key=lambda x: x['width'] * x['height'])[-1]['url']
-        download_photo(url, folder_path, f"{i + 1}.jpg")
-
-# 3. Download photos from wall posts
-print("Downloading photos from wall posts...")
+print(messages[lang]['fetching_wall_photos'])
 wall_photos = get_wall_photos(user_id)
 wall_folder = os.path.join(base_folder, "Wall_Posts")
-for i, photo in enumerate(wall_photos):
-    url = sorted(photo['sizes'], key=lambda x: x['width'] * x['height'])[-1]['url']
-    download_photo(url, wall_folder, f"{i + 1}.jpg")
+process_photos(wall_photos, wall_folder)
 
-print("All photos downloaded successfully.")
-time.sleep(5)
+print(messages[lang]['all_done'])
