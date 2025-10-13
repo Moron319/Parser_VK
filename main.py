@@ -5,8 +5,26 @@ import os
 import time
 import re
 
+
+#--ASCII color/ANSI цвета--
+GREEN = "\033[92m"
+BLUE = "\033[94m"
+RESET = "\033[0m"
+
+#--ASCII logo/ASCII лого--
+ascii_art = f"""
+{GREEN}PPPP{RESET}    {BLUE}V{RESET}   {BLUE}V{RESET}   {BLUE}K{RESET}   {BLUE}K{RESET}
+{GREEN}P   P{RESET}   {BLUE}V{RESET}   {BLUE}V{RESET}   {BLUE}K{RESET}  {BLUE}K{RESET}
+{GREEN}PPPP{RESET}    {BLUE}V{RESET}   {BLUE}V{RESET}   {BLUE}KKK{RESET}
+{GREEN}P{RESET}       {BLUE}V{RESET} {BLUE}V{RESET}     {BLUE}K{RESET}  {BLUE}K{RESET}
+{GREEN}P{RESET}        {BLUE}V{RESET}      {BLUE}K{RESET}   {BLUE}K{RESET}
+"""
+
 #--set version/назначяем версию--
 version = '5.131'
+
+#--print ASCII logo/вывод ASCII лого--
+print(ascii_art)
 
 #--Language selection/Выбор языка--
 lang = input("Choose language/Выберите язык (en/ru):").strip().lower()
