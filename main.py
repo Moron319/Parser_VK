@@ -1,4 +1,5 @@
 #--import libraries/загружаем библиотеки--
+#version: 2.1
 
 import requests
 import os
