@@ -21,7 +21,7 @@ ascii_art = f"""
 {GREEN}P{RESET}        {BLUE}V{RESET}      {BLUE}K{RESET}   {BLUE}K{RESET}
 """
 
-#--set version/назначяем версию--
+#--set version VK API/назначяем версию VK API--
 version = '5.131'
 
 #--print ASCII logo/вывод ASCII лого--
