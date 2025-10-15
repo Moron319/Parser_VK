@@ -1,6 +1,12 @@
 #--import libraries/загружаем библиотеки--
 #version: 2.1
 
+#PPPP   V   V  K   K
+#P   P  V   V  K  K 
+#PPPP   V   V  KKK  
+#P      V   V  K  K 
+#P       VVV   K   K
+
 import requests
 import os
 import time
