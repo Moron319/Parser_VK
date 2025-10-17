@@ -9,8 +9,8 @@ pip install requests
 ## Py to exe?
 ```
 pip install requests
-pip install auto-py-to-exe
-auto-py-to-exe
+pip install pyinstaller
+pyinstaller --onefile --name ParserVK main.py
 ```
 
 # donate me pls  
