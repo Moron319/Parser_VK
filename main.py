@@ -1,5 +1,5 @@
 #--import libraries/загружаем библиотеки--
-#version: 2.1
+#version: 2.2
 
 #PPPP   V   V  K   K
 #P   P  V   V  K  K 
@@ -11,11 +11,19 @@ import requests
 import os
 import time
 import re
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 #--ASCII color/ANSI цвета--
 GREEN = "\033[92m"
 BLUE = "\033[94m"
+RESET = "\033[0m"
+
+#--Colors for final messages/Цвета финального сообщение--
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
 RESET = "\033[0m"
 
 #--ASCII logo/ASCII лого--
@@ -48,7 +56,9 @@ messages = {
         'album': " → Album: {}",
         'fetching_system_albums': "\n[+] Fetching system albums...",
         'fetching_wall_photos': "\n[+] Fetching wall post photos...",
-        'all_done': "\nAll photos downloaded successfully!",
+        'all_done': f"{GREEN}\nAll photos downloaded successfully!{RESET}",
+        'some_failed': f"{YELLOW}\nDownload completed, but some photos failed.{RESET}",
+        'none_downloaded': f"{RED}\nNo photos were downloaded.{RESET}",
         'vk_api_error': "[VK API Error] {}",
         'request_error': "[Request Error] {}",
         'download_error': "[Download Error] {}: {}"
@@ -61,12 +71,16 @@ messages = {
         'album': " → Альбом: {}",
         'fetching_system_albums': "\n[+] Получаем системные альбомы...",
         'fetching_wall_photos': "\n[+] Получаем фото со стены...",
-        'all_done': "\nВсе фото успешно загружены!",
+        'all_done': f"{GREEN}\nВсе фото успешно загружены!{RESET}",
+        'some_failed': f"{YELLOW}\nЗагрузка завершена, но некоторые фото не удалось скачать.{RESET}",
+        'none_downloaded': f"{RED}\nНи одно фото не было скачано.{RESET}",
         'vk_api_error': "[Ошибка VK API] {}",
         'request_error': "[Ошибка запроса] {}",
         'download_error': "[Ошибка скачивания] {}: {}"
     }
 }
+
+
 
 #--Input/Ввод данных--
 user_id = input(messages[lang]['enter_user_id']).strip()
@@ -165,13 +179,31 @@ def get_wall_photos(owner_id):
 def process_photos(photos, folder):
     # Download all photos from list
     # Скачиваем все фото из списка
-    for i, photo in enumerate(photos):
-        sizes = photo.get('sizes', [])
-        if not sizes:
-            continue
-        url = sorted(sizes, key=lambda s: s['width'] * s['height'])[-1]['url']
-        filename = f"{i+1}.jpg"
-        download_photo(url, folder, filename)
+    os.makedirs(folder, exist_ok=True)
+    tasks = []
+    results = []
+    
+    def safe_download(url, folder, filename):
+        try:
+            download_photo(url, folder, filename)
+            return True
+        except:
+            return False
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        for i, photo in enumerate(photos):
+            sizes = photo.get('sizes', [])
+            if not sizes:
+                continue
+            url = sorted(sizes, key=lambda s: s['width'] * s['height'])[-1]['url']
+            filename = f"{i+1}.jpg"
+            tasks.append(executor.submit(safe_download, url, folder, filename))
+        
+        for future in tqdm(as_completed(tasks), total=len(tasks), desc=f"Downloading → {folder}"):
+            results.append(future.result())
+
+    return results.count(True)
+
 
 #--Main execution/Основной запуск--
 
@@ -179,6 +211,10 @@ user_name_folder = get_user_name(user_id)
 base_folder = os.path.join("parser_VK", user_name_folder)
 
 print(messages[lang]['starting_download'].format(user_name_folder))
+
+total_photos_downloaded = 0
+total_photos_attempted = 0
+
 print(messages[lang]['fetching_standard_albums'])
 albums = get_albums(user_id)
 for album in albums:
@@ -187,7 +223,8 @@ for album in albums:
     print(messages[lang]['album'].format(title))
     folder_path = os.path.join(base_folder, title)
     photos = get_photos(user_id, album_id)
-    process_photos(photos, folder_path)
+    total_photos_attempted += len(photos)
+    total_photos_downloaded += process_photos(photos, folder_path)
     time.sleep(0.34)
 
 print(messages[lang]['fetching_system_albums'])
@@ -200,12 +237,21 @@ for album_id, title in system_albums.items():
     print(messages[lang]['album'].format(title))
     folder_path = os.path.join(base_folder, clean_filename(title))
     photos = get_photos(user_id, album_id)
-    process_photos(photos, folder_path)
+    total_photos_attempted += len(photos)
+    total_photos_downloaded += process_photos(photos, folder_path)
     time.sleep(0.34)
 
 print(messages[lang]['fetching_wall_photos'])
 wall_photos = get_wall_photos(user_id)
 wall_folder = os.path.join(base_folder, "Wall_Posts")
-process_photos(wall_photos, wall_folder)
+total_photos_attempted += len(wall_photos)
+total_photos_downloaded += process_photos(wall_photos, wall_folder)
 
-print(messages[lang]['all_done'])
+if total_photos_attempted == 0:
+    print(messages[lang]['none_downloaded'])
+elif total_photos_downloaded == 0:
+    print(messages[lang]['none_downloaded'])
+elif total_photos_downloaded < total_photos_attempted:
+    print(messages[lang]['some_failed'])
+else:
+    print(messages[lang]['all_done'])

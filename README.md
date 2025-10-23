@@ -1,14 +1,14 @@
 # Parser_VK
 Parsing all photos on a person's page vk
 # Install source code
-To make the code work, install requests.
+To make the code work, install requests and tqdm.
 ```
-pip install requests
+pip install requests tqdm
 ```
 
 ## Py to exe?
 ```
-pip install requests
+pip install requests tqdm
 pip install pyinstaller
 pyinstaller --onefile --name ParserVK main.py
 ```
