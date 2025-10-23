@@ -1,5 +1,5 @@
 #--import libraries/загружаем библиотеки--
-#version: 2.2
+#version: 2.2.1
 
 #PPPP   V   V  K   K
 #P   P  V   V  K  K 
@@ -14,17 +14,12 @@ import re
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
-#--ASCII color/ANSI цвета--
-GREEN = "\033[92m"
-BLUE = "\033[94m"
-RESET = "\033[0m"
-
-#--Colors for final messages/Цвета финального сообщение--
+#--Set colors/Установка цветов--
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
 RED = "\033[91m"
 RESET = "\033[0m"
+BLUE = "\033[94m"
 
 #--ASCII logo/ASCII лого--
 ascii_art = f"""
