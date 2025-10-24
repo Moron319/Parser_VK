@@ -1,5 +1,5 @@
 #--import libraries/загружаем библиотеки--
-#version: 2.2.1
+#version: 2.2.2
 
 #PPPP   V   V  K   K
 #P   P  V   V  K  K 
@@ -37,9 +37,13 @@ version = '5.131'
 print(ascii_art)
 
 #--Language selection/Выбор языка--
-lang = input("Choose language/Выберите язык (en/ru):").strip().lower()
-if lang not in ['en', 'ru']:
-    lang = 'en'
+while True:
+    lang = input("Choose language/Выберите язык (en/ru):").strip().lower()
+    if lang in ['en', 'ru']:
+        break
+    else:
+        print(f"{RED}Invalid choice! Please enter 'en' or 'ru'.{RESET}")
+        print(f"{RED}Неверный выбор! Введите 'en' или 'ru'.{RESET}")
 
 #--Messages dictionary/Словарь сообщений--
 messages = {
