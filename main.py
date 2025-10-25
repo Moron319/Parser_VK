@@ -1,5 +1,5 @@
 #--import libraries/загружаем библиотеки--
-#version: 2.2.2
+#version: 2.3
 
 #PPPP   V   V  K   K
 #P   P  V   V  K  K 
@@ -28,6 +28,9 @@ ascii_art = f"""
 {GREEN}PPPP{RESET}    {BLUE}V{RESET}   {BLUE}V{RESET}   {BLUE}KKK{RESET}
 {GREEN}P{RESET}       {BLUE}V{RESET} {BLUE}V{RESET}     {BLUE}K{RESET}  {BLUE}K{RESET}
 {GREEN}P{RESET}        {BLUE}V{RESET}      {BLUE}K{RESET}   {BLUE}K{RESET}
+
+{GREEN}By:Moron319{RESET} 
+{BLUE}version:2.3{RESET} 
 """
 
 #--set version VK API/назначяем версию VK API--
@@ -39,6 +42,9 @@ print(ascii_art)
 #--Language selection/Выбор языка--
 while True:
     lang = input("Choose language/Выберите язык (en/ru):").strip().lower()
+    if lang == "":  
+        lang = "en"
+        break
     if lang in ['en', 'ru']:
         break
     else:
@@ -85,6 +91,12 @@ messages = {
 user_id = input(messages[lang]['enter_user_id']).strip()
 access_token = input(messages[lang]['enter_token']).strip()
 
+#--Write Logs/Записываем логи--
+def log_error(message):
+    os.makedirs("logs", exist_ok=True)
+    with open("logs/logs.txt", "a", encoding="utf-8") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+
 #--Helpers/Вспомогательные функции--
 def clean_filename(name):
     # Clean file/folder names from invalid characters
@@ -99,11 +111,14 @@ def vk_api_request(method, params):
     try:
         response = requests.get(url, params=params).json()
         if 'error' in response:
-            print(messages[lang]['vk_api_error'].format(response['error']['error_msg']))
+            error_msg = response['error']['error_msg']
+            print(messages[lang]['vk_api_error'].format(error_msg))
+            log_error(f"VK API Error for method {method}: {error_msg}")
             return None
         return response['response']
     except Exception as e:
         print(messages[lang]['request_error'].format(e))
+        log_error(f"Request exception for method {method}: {e}")
         return None
 
 def get_user_name(user_id):
@@ -127,6 +142,7 @@ def download_photo(url, folder, filename):
             f.write(img)
     except Exception as e:
         print(messages[lang]['download_error'].format(filename, e))
+        log_error(f"Download error for {filename}: {e}")
 
 #--Logic/Основная логика--
 def get_albums(user_id):
